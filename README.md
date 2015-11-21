@@ -1,1 +1,1 @@
-Konfiguration för Marinvgägen 14 openHAB
+Konfiguration för Marinvägen 14 openHAB
