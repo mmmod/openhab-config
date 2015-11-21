@@ -1,0 +1,95 @@
+import org.joda.time.*
+import org.openhab.core.library.types.*
+import org.openhab.core.library.types.PercentType
+import org.openhab.core.library.items.SwitchItem
+import org.openhab.model.script.actions.*
+import org.openhab.model.script.actions.Timer
+import java.util.HashMap
+import java.util.LinkedHashMap
+import java.util.ArrayList
+import java.util.Map
+import java.util.concurrent.locks.Lock
+import java.util.concurrent.locks.ReentrantLock
+
+var Timer timer = null
+var String foo = "30 10 22 * * ?"
+
+rule "Lights off at midnight"
+when
+	Time cron foo
+then
+	logInfo("Foobar", "Hello")
+	sendCommand(GF_Nexa_Tobias_rum, ON)
+end
+
+rule "OFF AGAIN!"
+when
+	Item GF_Nexa_Tobias_rum received command
+then
+	if(receivedCommand==ON) {
+                if(timer==null) {
+                        // first ON command, so create a timer to turn the light off again
+                        timer = createTimer(now.plusSeconds(10)) [|
+                                sendCommand(GF_Nexa_Tobias_rum, OFF)
+                        ]
+                } else {
+                        // subsequent ON command, so reschedule the existing timer
+                        timer.reschedule(now.plusSeconds(10))
+                }
+        } else if(receivedCommand==OFF) {
+                // remove any previously scheduled timer
+                if(timer!=null) {
+                        timer.cancel
+                        timer = null
+                }
+        }
+end
+
+
+var Timer masterAlarmTime = null
+
+    rule "Master bedroom alarm time"
+    when
+        Time cron "0 5 0 * * ?" or
+        Item Alarm_MasterTimeMins received update
+    then
+        var int minutes = (Alarm_MasterTimeMins.state as DecimalType).intValue()
+
+        if (masterAlarmTime != null)
+            masterAlarmTime.cancel()
+
+        // work out when the alarm is to fire - start from midnight
+        var DateTime alarmTime = parse(now.getYear() + "-" + now.getMonthOfYear() + "-" + now.getDayOfMonth() + "T00:00")
+
+        // add the number of minutes selected
+        alarmTime = alarmTime.plusMinutes(minutes)
+
+        // if we have already past the alarm time then set it for the following day
+        if (alarmTime.beforeNow)
+            alarmTime = alarmTime.plusDays(1)
+
+        // create a timer to execute the alarm at the specified time
+        masterAlarmTime = createTimer(alarmTime) [| 
+            if (Alarm_Master.state == ON && Holiday.state == OFF && now.getDayOfWeek() < 6) 
+                Alarm_MasterEvent.sendCommand(ON)
+        ]
+
+        // update the alarm display time    
+        Alarm_MasterTime.sendCommand(String::format("%02d:%02d", alarmTime.getHourOfDay(), alarmTime.getMinuteOfHour()))
+    end
+
+    rule "Master bedroom alarm"
+    when
+        Item Alarm_MasterEvent received command ON
+    then
+        // do your alarm stuff - turn on radio, dim up lights, start the coffee machine...
+    end
+
+rule "NNollställ timers"
+when
+	System started
+then
+	postUpdate(weckerZeitStunde, 8)
+	postUpdate(weckerZeitMinute, 15)
+end
+

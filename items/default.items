@@ -1,0 +1,14 @@
+DateTime Sunrise_Time  "Soluppgång [%1$tH:%1$tM]"  {astro="planet=sun, type=rise, property=start"}
+DateTime Sunset_Time   "Solnedgång [%1$tH:%1$tM]"   {astro="planet=sun, type=set, property=end"}
+Switch Sunrise_Event   {astro="planet=sun, type=rise, property=start"}
+Switch Sunset_Event   {astro="planet=sun, type=set, property=start"}
+
+String weckerZeitMessage "%s"
+
+Number weckerZeitStunde "Stunde [%d]" <clock> (gWeckerZeit)
+Number weckerZeitMinute "Minute [%d]" <clock> (gWeckerZeit)
+
+Switch GF_Nexa_Utebelysning	"Utebelysning"	{ tellstick="Utebelysning:Command" }
+Switch GF_Nexa_Motorvarmare	"Motorvärmare"	{ tellstick="Motorvarmare:Command" }
+Switch GF_Nexa_Tobias_rum	"Tobias rum"	{ tellstick="Tobias_rum:Command" }
+

@@ -1,0 +1,39 @@
+sitemap default label="Marinvägen 14"
+{
+	Frame label="Väder" {
+		Text item=Sunrise_Time icon="sun"
+		Text item=Sunset_Time icon="moon"
+	}
+
+	Frame label="Belysning" {
+		Switch item=GF_Nexa_Utebelysning label="Utebelysning"
+		Switch item=GF_Nexa_Motorvarmare label="Motorvärmaruttag"
+		Switch item=GF_Nexa_Tobias_rum label="Tobias Rum"
+	}
+
+	Frame label="Alarm" {
+	    Text item=Alarm_MasterTime icon="presence-on" visibility=[Alarm_Master==ON] {
+		Frame label="Master Alarm" {
+		    Switch item=Alarm_Master
+		    Text item=Alarm_MasterTime
+		    Setpoint item=Alarm_MasterTimeMins minValue=0 maxValue=600 step=5
+		}
+	    }
+	    Text item=Alarm_MasterTime icon="presence-off" visibility=[Alarm_Master==OFF] {
+		Frame label="Master Alarm" {
+		    Switch item=Alarm_Master
+		    Text item=Alarm_MasterTime
+		    Setpoint item=Alarm_MasterTimeMins minValue=0 maxValue=600 step=5
+		}
+	    }
+	}
+
+	Frame label="Timers" {
+		Text label="Wecker [%s]" item=weckerZeitMessage icon="clock" {
+			Frame label="Zeit" {
+				Setpoint item=weckerZeitStunde minValue=0 maxValue=23 step=1
+				Setpoint item=weckerZeitMinute minValue=0 maxValue=55 step=5
+			}
+		}
+	}
+}
