@@ -12,84 +12,100 @@ import java.util.concurrent.locks.Lock
 import java.util.concurrent.locks.ReentrantLock
 
 var Timer timer = null
-var String foo = "30 10 22 * * ?"
 
-rule "Lights off at midnight"
+rule "Utebelysning på vid solnedgång"
 when
-	Time cron foo
+	Item Sunset_Event received update ON
 then
-	logInfo("Foobar", "Hello")
-	sendCommand(GF_Nexa_Tobias_rum, ON)
+	sendCommand(GF_Nexa_Utebelysning, ON)
+	sendCommand(GF_Nexa_Sovrummet, ON)
 end
 
-rule "OFF AGAIN!"
+rule "Sovrummet av klockan 23:00"
 when
-	Item GF_Nexa_Tobias_rum received command
+	Time cron "0 0 23 * * ?"
 then
-	if(receivedCommand==ON) {
-                if(timer==null) {
+	sendCommand(GF_Nexa_Sovrummet, OFF)
+end
+
+rule "Utebelysning av vid 00:00 sön-tors"
+when
+	Time cron "0 0 0 ? * SUN-THU"
+then
+	sendCommand(GF_Nexa_Utebelysning, OFF)
+end
+
+rule "Utebelysning av vid 02:00 fre-lrör"
+when
+	Time cron "0 0 2 ? * FRI-SAT"
+then
+	sendCommand(GF_Nexa_Utebelysning, OFF)
+end
+
+rule "Utebelysning på vid morgon"
+when
+	Time cron "0 30 5 * * ?"
+then
+	sendCommand(GF_Nexa_Utebelysning, ON)
+end
+
+rule "Utebelysning av vid soluppgång"
+when	
+	Item Sunrise_Event received update ON
+then
+	sendCommand(GF_Nexa_Utebelysning, OFF)
+	sendCommand(GF_Nexa_Sovrummet, OFF)
+end
+
+rule "Sovrumslampan på vid morgon veckodagar"
+when
+	Time cron "0 0 6 ? * MON-FRI"
+then
+	sendCommand(GF_Nexa_Sovrummet, ON)
+end
+
+rule "Sovrumslampan på vid morgon helg"
+when
+	Time cron "0 0 9 ? * SAT-SUN"
+then
+	sendCommand(GF_Nexa_Sovrummet, ON)
+end
+
+rule "Sovrumslampan av� vid morgon helg"
+when
+	Time cron "0 0 11 ? * SAT-SUN"
+then
+	sendCommand(GF_Nexa_Sovrummet, OFF)
+end
+
+rule "Motorvärmare veckodagar"
+when
+	Time cron "0 30 5 ? * MON-FRI"
+then
+	logInfo("Timers", "Motorvärmaruttag på ")
+	sendCommand(GF_Nexa_Motorvarmare, ON)
+end
+
+rule "Stäng av motorvärmaruttag efter 2 timmar från påslag"
+when
+	Item GF_Nexa_Motorvarmare received command
+then
+	if (receivedCommand == ON) {
+                if (timer == null) {
                         // first ON command, so create a timer to turn the light off again
-                        timer = createTimer(now.plusSeconds(10)) [|
-                                sendCommand(GF_Nexa_Tobias_rum, OFF)
+                        timer = createTimer(now.plusSeconds(120)) [|
+                                sendCommand(GF_Nexa_Motorvarmare, OFF)
                         ]
                 } else {
                         // subsequent ON command, so reschedule the existing timer
-                        timer.reschedule(now.plusSeconds(10))
+                        timer.reschedule(now.plusMinutes(120))
                 }
-        } else if(receivedCommand==OFF) {
+        } else if (receivedCommand == OFF) {
                 // remove any previously scheduled timer
-                if(timer!=null) {
+                if (timer != null) {
                         timer.cancel
                         timer = null
                 }
         }
-end
-
-
-var Timer masterAlarmTime = null
-
-    rule "Master bedroom alarm time"
-    when
-        Time cron "0 5 0 * * ?" or
-        Item Alarm_MasterTimeMins received update
-    then
-        var int minutes = (Alarm_MasterTimeMins.state as DecimalType).intValue()
-
-        if (masterAlarmTime != null)
-            masterAlarmTime.cancel()
-
-        // work out when the alarm is to fire - start from midnight
-        var DateTime alarmTime = parse(now.getYear() + "-" + now.getMonthOfYear() + "-" + now.getDayOfMonth() + "T00:00")
-
-        // add the number of minutes selected
-        alarmTime = alarmTime.plusMinutes(minutes)
-
-        // if we have already past the alarm time then set it for the following day
-        if (alarmTime.beforeNow)
-            alarmTime = alarmTime.plusDays(1)
-
-        // create a timer to execute the alarm at the specified time
-        masterAlarmTime = createTimer(alarmTime) [| 
-            if (Alarm_Master.state == ON && Holiday.state == OFF && now.getDayOfWeek() < 6) 
-                Alarm_MasterEvent.sendCommand(ON)
-        ]
-
-        // update the alarm display time    
-        Alarm_MasterTime.sendCommand(String::format("%02d:%02d", alarmTime.getHourOfDay(), alarmTime.getMinuteOfHour()))
-    end
-
-    rule "Master bedroom alarm"
-    when
-        Item Alarm_MasterEvent received command ON
-    then
-        // do your alarm stuff - turn on radio, dim up lights, start the coffee machine...
-    end
-
-rule "NNollställ timers"
-when
-	System started
-then
-	postUpdate(weckerZeitStunde, 8)
-	postUpdate(weckerZeitMinute, 15)
 end
 
